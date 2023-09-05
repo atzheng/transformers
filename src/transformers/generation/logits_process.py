@@ -175,7 +175,12 @@ class MinNewTokensLengthLogitsProcessor(LogitsProcessor):
     ```
     """
 
-    def __init__(self, prompt_length_to_skip: int, min_new_tokens: int, eos_token_id: Union[int, List[int]]):
+    def __init__(
+        self,
+        prompt_length_to_skip: int,
+        min_new_tokens: int,
+        eos_token_id: Union[int, List[int]],
+    ):
         for arg_name, arg_value in [
             ("prompt_length_to_skip", prompt_length_to_skip),
             ("min_new_tokens", min_new_tokens),
@@ -385,7 +390,12 @@ class TopPLogitsWarper(LogitsWarper):
     ```
     """
 
-    def __init__(self, top_p: float, filter_value: float = -float("Inf"), min_tokens_to_keep: int = 1):
+    def __init__(
+        self,
+        top_p: float,
+        filter_value: float = -float("Inf"),
+        min_tokens_to_keep: int = 1,
+    ):
         top_p = float(top_p)
         if top_p < 0 or top_p > 1.0:
             raise ValueError(f"`top_p` has to be a float > 0 and < 1, but is {top_p}")
@@ -425,7 +435,12 @@ class TopKLogitsWarper(LogitsWarper):
             Minimum number of tokens that cannot be filtered.
     """
 
-    def __init__(self, top_k: int, filter_value: float = -float("Inf"), min_tokens_to_keep: int = 1):
+    def __init__(
+        self,
+        top_k: int,
+        filter_value: float = -float("Inf"),
+        min_tokens_to_keep: int = 1,
+    ):
         if not isinstance(top_k, int) or top_k <= 0:
             raise ValueError(f"`top_k` has to be a strictly positive integer, but is {top_k}")
 
@@ -455,7 +470,12 @@ class TypicalLogitsWarper(LogitsWarper):
             Minimum number of tokens that cannot be filtered.
     """
 
-    def __init__(self, mass: float = 0.9, filter_value: float = -float("Inf"), min_tokens_to_keep: int = 1):
+    def __init__(
+        self,
+        mass: float = 0.9,
+        filter_value: float = -float("Inf"),
+        min_tokens_to_keep: int = 1,
+    ):
         mass = float(mass)
         if not (mass > 0 and mass < 1):
             raise ValueError(f"`typical_p` has to be a float > 0 and < 1, but is {mass}")
@@ -528,7 +548,12 @@ class EpsilonLogitsWarper(LogitsWarper):
     ```
     """
 
-    def __init__(self, epsilon: float, filter_value: float = -float("Inf"), min_tokens_to_keep: int = 1):
+    def __init__(
+        self,
+        epsilon: float,
+        filter_value: float = -float("Inf"),
+        min_tokens_to_keep: int = 1,
+    ):
         epsilon = float(epsilon)
         if epsilon <= 0 or epsilon >= 1:
             raise ValueError(f"`epsilon_cutoff` has to be a float > 0 and < 1, but is {epsilon}")
@@ -605,7 +630,12 @@ class EtaLogitsWarper(LogitsWarper):
     ```
     """
 
-    def __init__(self, epsilon: float, filter_value: float = -float("Inf"), min_tokens_to_keep: int = 1):
+    def __init__(
+        self,
+        epsilon: float,
+        filter_value: float = -float("Inf"),
+        min_tokens_to_keep: int = 1,
+    ):
         epsilon = float(epsilon)
         if epsilon <= 0 or epsilon >= 1:
             raise ValueError(f"`eta_cutoff` has to be a float > 0 and < 1, but is {epsilon}")
@@ -791,7 +821,10 @@ class EncoderNoRepeatNGramLogitsProcessor(LogitsProcessor):
         cur_len = input_ids.shape[-1]
         banned_batch_tokens = [
             _get_generated_ngrams(
-                self.generated_ngrams[hypo_idx // num_beams], input_ids[hypo_idx], self.ngram_size, cur_len
+                self.generated_ngrams[hypo_idx // num_beams],
+                input_ids[hypo_idx],
+                self.ngram_size,
+                cur_len,
             )
             for hypo_idx in range(num_hypos)
         ]
@@ -1015,7 +1048,10 @@ class NoBadWordsLogitsProcessor(SequenceBiasLogitsProcessor):
         if isinstance(eos_token_id, int):
             eos_token_id = [eos_token_id]
         bad_words_ids = list(
-            filter(lambda bad_token_seq: all(bad_token_seq != [i] for i in eos_token_id), bad_words_ids)
+            filter(
+                lambda bad_token_seq: all(bad_token_seq != [i] for i in eos_token_id),
+                bad_words_ids,
+            )
         )
 
         # Forbidding a sequence is equivalent to setting its bias to -inf
@@ -1050,7 +1086,11 @@ class PrefixConstrainedLogitsProcessor(LogitsProcessor):
             `batch_id`.
     """
 
-    def __init__(self, prefix_allowed_tokens_fn: Callable[[int, torch.Tensor], List[int]], num_beams: int):
+    def __init__(
+        self,
+        prefix_allowed_tokens_fn: Callable[[int, torch.Tensor], List[int]],
+        num_beams: int,
+    ):
         self._prefix_allowed_tokens_fn = prefix_allowed_tokens_fn
         self._num_beams = num_beams
 
@@ -1059,7 +1099,10 @@ class PrefixConstrainedLogitsProcessor(LogitsProcessor):
         mask = torch.full_like(scores, -math.inf)
         for batch_id, beam_sent in enumerate(input_ids.view(-1, self._num_beams, input_ids.shape[-1])):
             for beam_id, sent in enumerate(beam_sent):
-                mask[batch_id * self._num_beams + beam_id, self._prefix_allowed_tokens_fn(batch_id, sent)] = 0
+                mask[
+                    batch_id * self._num_beams + beam_id,
+                    self._prefix_allowed_tokens_fn(batch_id, sent),
+                ] = 0
 
         return scores + mask
 
@@ -1217,11 +1260,16 @@ class HammingDiversityLogitsProcessor(LogitsProcessor):
             return scores
 
         for batch_idx in range(batch_size):
+            input_counts = torch.bincount(
+                input_ids[batch_idx, :], minlength=vocab_size).to(scores.device)
             # predicted tokens of last time step of previous groups
             previous_group_tokens = current_tokens[
                 batch_idx * self._num_beams : batch_idx * self._num_beams + group_start_idx
             ]
-            token_frequency = torch.bincount(previous_group_tokens, minlength=vocab_size).to(scores.device)
+            token_frequency = (
+                torch.bincount(previous_group_tokens, minlength=vocab_size).to(scores.device)
+                + input_counts
+            )
             scores[batch_idx * group_size : (batch_idx + 1) * group_size] -= self._diversity_penalty * token_frequency
 
         return scores
